@@ -271,7 +271,7 @@ export function transformModuleImportsPlugin(
         const bodyWithResolvedImports = await transformModuleImportsWithPlugins(
           logger,
           context,
-          context.body,
+          bodyToString(context.body),
           rootDir,
           importPlugins,
         );
@@ -280,7 +280,7 @@ export function transformModuleImportsPlugin(
 
       // resolve inline scripts
       if (context.response.is('html')) {
-        const documentAst = parseHtml(context.body);
+        const documentAst = parseHtml(bodyToString(context.body));
         const inlineModuleNodes = queryAll(
           documentAst,
           predicates.AND(
@@ -312,4 +312,22 @@ export function transformModuleImportsPlugin(
       }
     },
   };
+}
+
+/**
+ * Convert a Koa response body to a string, or throw if we don't recognize its
+ * type.
+ */
+function bodyToString(body: unknown): string {
+  if (typeof body === 'string') {
+    return body;
+  }
+  if (body instanceof Buffer) {
+    return body.toString('utf8');
+  }
+  throw new Error(
+    `Expected response body to be string or Buffer, was ${
+      typeof body === 'object' && body !== null ? body.constructor.name : typeof body
+    }`,
+  );
 }

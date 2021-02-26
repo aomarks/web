@@ -495,4 +495,63 @@ describe('transformImport', () => {
       server.stop();
     }
   });
+
+  it('can transform imports when body is buffer', async () => {
+    const { server, host } = await createTestServer({
+      plugins: [
+        {
+          name: 'body-to-buffer',
+          transform(context) {
+            return { body: (Buffer.from(context.body, 'utf8') as unknown) as string };
+          },
+        },
+        {
+          name: 'test',
+          transformImport({ source }) {
+            return `${source}?transformed-1`;
+          },
+        },
+      ],
+    });
+
+    try {
+      const response = await fetch(`${host}/src/app.js`);
+      const responseText = await response.text();
+
+      expect(response.status).to.equal(200);
+      expect(responseText).to.include("import { message } from 'my-module?transformed-1';");
+      expect(responseText).to.include('./src/local-module.js?transformed-1');
+    } finally {
+      server.stop();
+    }
+  });
+
+  it('resolves imports in inline modules in HTML files when body is buffer', async () => {
+    const { server, host } = await createTestServer({
+      plugins: [
+        {
+          name: 'body-to-buffer',
+          transform(context) {
+            return { body: (Buffer.from(context.body, 'utf8') as unknown) as string };
+          },
+        },
+        {
+          name: 'test',
+          resolveImport({ source }) {
+            return `RESOLVED__${source}`;
+          },
+        },
+      ],
+    });
+
+    try {
+      const response = await fetch(`${host}/index.html`);
+      const responseText = await response.text();
+
+      expect(response.status).to.equal(200);
+      expect(responseText).to.include("import { message } from 'RESOLVED__my-module';");
+    } finally {
+      server.stop();
+    }
+  });
 });
